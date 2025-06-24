@@ -1,0 +1,76 @@
+services:
+  tt-storage-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tt_storage_backend
+    mem_limit: 1g
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    volumes:
+      - ./_temp-uploads:/app/temp-uploads
+    ports:
+      - ${TT_STORAGE_SERVICE_PORT}:8080
+    depends_on:
+      tt-mongodb:
+        condition: service_healthy
+      tt-minio:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - SPRING_SERVLET_MULTIPART_LOCATION=/app/temp-uploads
+    networks:
+      - tt-network
+
+  tt-mongodb:
+    image: 'mongo:latest'
+    container_name: tt_mongodb
+    env_file:
+      - .env
+    environment:
+      - 'MONGO_INITDB_DATABASE=tt_storage_db'
+    ports:
+      - ${MONGODB_PORT}:27017
+    volumes:
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh tt-mongodb:${MONGODB_PORT}/tt_storage_db --quiet
+      interval: 2s
+      timeout: 3s
+      retries: 15
+    networks:
+      - tt-network
+
+  tt-minio:
+    image: minio/minio
+    container_name: tt_minio
+    ports:
+      - ${MINIO_PORT}:9000
+    env_file:
+      - .env
+    environment:
+      MINIO_ROOT_USER: minio_user
+      MINIO_ROOT_PASSWORD: minio_letmein
+    command: server /data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://tt-minio:9000/minio/health/live" ]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+    volumes:
+      - ./_minio-data:/data
+    networks:
+      - tt-network
+
+volumes:
+  minio-data:
+
+networks:
+  tt-network:

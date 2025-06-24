@@ -1,0 +1,44 @@
+server:
+  port: 0  # Use random port for tests
+  jetty:
+    threads:
+      max: 50
+      min: 5
+    connection-idle-timeout: 300000
+
+spring:
+  application:
+    name: tt-storage-test
+  servlet:
+    multipart:
+      max-file-size: -1
+      max-request-size: -1
+
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/tt_storage_test_db
+
+minio:
+  url: localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket-name: storage-files-test
+  secure: false
+
+springdoc:
+  swagger-ui:
+    path: /docs
+    groups-order: asc
+    operations-sorter: method
+    supported-submit-methods: [ "post", "get", "put", "delete" ]
+  api-docs:
+    path: /v3/api-docs
+  use-fqn: true
+
+app:
+  domain: http://localhost:8080
+
+logging:
+  level:
+    com.aivanouski.ttstorage: DEBUG
+    org.springframework.web: DEBUG 

@@ -1,0 +1,24 @@
+# Ignore all files and add necessary files only
+*
+
+!.gitignore
+!Dockerfile
+!README.md
+!pom.xml
+!*.md
+!*.yaml
+!*.yml
+!mvnw
+!mvnw.cmd
+!.env
+!.mvn
+!.mvn/**/*
+!postman
+!postman/**/*
+!mongo-init.js
+!run.sh
+!test-large-file.sh
+
+!src
+!src/**/*
+

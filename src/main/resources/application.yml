@@ -1,0 +1,44 @@
+server:
+  port: ${TT_STORAGE_SERVICE_PORT:8080}
+  jetty:
+    threads:
+      max: 200
+      min: 10
+    connection-idle-timeout: 3600000
+    max-connections: 8192
+    accept-queue-size: 100
+
+spring:
+  application:
+    name: tt-storage
+  servlet:
+    multipart:
+      max-file-size: -1
+      max-request-size: -1
+      file-size-threshold: 10MB
+      location: ${SPRING_SERVLET_MULTIPART_LOCATION:${java.io.tmpdir}}
+      resolve-lazily: true
+
+  data:
+    mongodb:
+      uri: mongodb://${MONGODB_USERNAME:user}:${MONGODB_PASSWORD:letmein}@${MONGODB_HOST:localhost}:${MONGODB_PORT:27017}/tt_storage_db?authSource=tt_storage_db
+
+minio:
+  url: ${MINIO_HOST:localhost}:${MINIO_PORT:9000}
+  access-key: minio_user
+  secret-key: minio_letmein
+  bucket-name: storage-files
+  secure: false
+
+springdoc:
+  swagger-ui:
+    path: /docs
+    groups-order: asc
+    operations-sorter: method
+    supported-submit-methods: [ "post", "get", "put", "delete" ]
+  api-docs:
+    path: /v3/api-docs
+  use-fqn: true
+
+app:
+  domain: http://localhost:${server.port}
