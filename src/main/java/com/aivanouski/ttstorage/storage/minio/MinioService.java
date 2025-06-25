@@ -78,37 +78,6 @@ public class MinioService implements StorageService {
         }
     }
 
-    public FilenameMetadata uploadFile(MultipartFile file) {
-        String filename = file.getOriginalFilename();
-        if (filename == null) {
-            throw new BadRequestException(FILENAME_IS_ABSENT_ERROR, "request does not contain a file name");
-        }
-
-        try (final InputStream inputStream = file.getInputStream()) {
-            FilenameMetadata filenameMetadata = buildInitialFilenameMetadata(UUID.randomUUID(), filename, inputStream);
-            PutObjectArgs args = PutObjectArgs.builder()
-                    .bucket(bucketName)
-                    .object(filenameMetadata.getMappedFullName())
-                    .stream(inputStream, -1, UPLOAD_PART_SIZE)
-                    .build();
-            minioClient.putObject(args);
-            return filenameMetadata;
-        } catch (MinioException e) {
-            log.error("MinIO error during file upload: {}", e.getMessage());
-            throw new StorageException(MINIO_CONNECTION_ERROR, "MinIO error during file upload: " + e.getMessage(), e);
-        } catch (IOException e) {
-            log.error("I/O error during file upload: {}", e.getMessage());
-            throw new StorageException(FILE_UPLOAD_ERROR, "I/O error during file upload: " + e.getMessage(), e);
-        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-            log.error("Security error during file upload: {}", e.getMessage());
-            throw new StorageException(MINIO_SECURITY_ERROR, "Security error during file upload: " + e.getMessage(), e);
-        } catch (Exception e) {
-            log.error("An unexpected error occurred during file upload: {}", e.getMessage());
-            throw new StorageException(MINIO_UNEXPECTED_EXCEPTION,
-                    "An unexpected error occurred during file upload: " + e.getMessage(), e);
-        }
-    }
-
     public FilenameMetadata uploadFile(MultipartFile file, UUID fileId) {
         String filename = file.getOriginalFilename();
         if (filename == null) {
@@ -140,31 +109,6 @@ public class MinioService implements StorageService {
         }
     }
 
-    public InputStream downloadFile(String minioObjectName) {
-        try {
-            GetObjectArgs args = GetObjectArgs.builder()
-                    .bucket(bucketName)
-                    .object(minioObjectName)
-                    .build();
-            return minioClient.getObject(args);
-        } catch (MinioException e) {
-            log.error("MinIO error during file download: {}", e.getMessage());
-            throw new StorageException(MINIO_CONNECTION_ERROR, "MinIO error during file download: " + e.getMessage(),
-                    e);
-        } catch (IOException e) {
-            log.error("I/O error during file download: {}", e.getMessage());
-            throw new StorageException(FILE_UPLOAD_ERROR, "I/O error during file download: " + e.getMessage(), e);
-        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-            log.error("Security error during file download: {}", e.getMessage());
-            throw new StorageException(MINIO_SECURITY_ERROR, "Security error during file download: " + e.getMessage(),
-                    e);
-        } catch (Exception e) {
-            log.error("An unexpected error occurred during file download: {}", e.getMessage());
-            throw new StorageException(MINIO_UNEXPECTED_EXCEPTION,
-                    "An unexpected error occurred during file download: " + e.getMessage(), e);
-        }
-    }
-
     public void deleteFile(String minioObjectName) {
         try {
             RemoveObjectArgs args = RemoveObjectArgs.builder()
@@ -189,33 +133,6 @@ public class MinioService implements StorageService {
             throw new StorageException(MINIO_UNEXPECTED_EXCEPTION,
                     "An unexpected error occurred during file deletion: " + e.getMessage(), e);
         }
-    }
-
-    public List<String> listFiles() {
-        List<String> fileNames = new ArrayList<>();
-        try {
-            // listObjects requires an Iterable of results
-            Iterable<Result<Item>> results = minioClient.listObjects(
-                    ListObjectsArgs.builder().bucket(bucketName).build());
-            for (Result<Item> itemResult : results) {
-                fileNames.add(itemResult.get().objectName());
-            }
-        } catch (MinioException e) {
-            log.error("MinIO error during file listing: {}", e.getMessage());
-            throw new StorageException(MINIO_CONNECTION_ERROR, "MinIO error during file listing: " + e.getMessage(), e);
-        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-            log.error("Security error during file listing: {}", e.getMessage());
-            throw new StorageException(MINIO_SECURITY_ERROR, "Security error during file listing: " + e.getMessage(),
-                    e);
-        } catch (IOException e) {
-            log.error("I/O error during file listing: {}", e.getMessage());
-            throw new StorageException(FILE_UPLOAD_ERROR, "I/O error during file listing: " + e.getMessage(), e);
-        } catch (Exception e) {
-            log.error("An unexpected error occurred during file listing: {}", e.getMessage());
-            throw new StorageException(MINIO_UNEXPECTED_EXCEPTION,
-                    "An unexpected error occurred during file listing: " + e.getMessage(), e);
-        }
-        return fileNames;
     }
 
     @Override
