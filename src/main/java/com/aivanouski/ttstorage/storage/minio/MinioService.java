@@ -1,7 +1,7 @@
 package com.aivanouski.ttstorage.storage.minio;
 
 import com.aivanouski.ttstorage.error.StorageException;
-import com.aivanouski.ttstorage.error.model.BadRequestException;
+import com.aivanouski.ttstorage.error.BadRequestException;
 import com.aivanouski.ttstorage.file.FilenameMetadata;
 import com.aivanouski.ttstorage.storage.StorageService;
 import io.minio.BucketExistsArgs;
@@ -10,10 +10,7 @@ import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.GetObjectArgs;
 import io.minio.RemoveObjectArgs;
-import io.minio.ListObjectsArgs;
-import io.minio.Result;
 import io.minio.errors.MinioException;
-import io.minio.messages.Item;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,8 +21,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 import static com.aivanouski.ttstorage.error.model.ErrorCodes.FILENAME_IS_ABSENT_ERROR;

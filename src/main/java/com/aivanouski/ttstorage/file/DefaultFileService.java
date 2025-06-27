@@ -2,7 +2,7 @@ package com.aivanouski.ttstorage.file;
 
 import com.aivanouski.ttstorage.error.NotFoundException;
 import com.aivanouski.ttstorage.error.StorageException;
-import com.aivanouski.ttstorage.error.model.BadRequestException;
+import com.aivanouski.ttstorage.error.BadRequestException;
 import com.aivanouski.ttstorage.storage.StorageService;
 import com.aivanouski.ttstorage.storage.TTFile;
 import com.aivanouski.ttstorage.util.FileChecksumUtil;

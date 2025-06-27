@@ -1,6 +1,5 @@
-package com.aivanouski.ttstorage.error.model;
+package com.aivanouski.ttstorage.error;
 
-import com.aivanouski.ttstorage.error.BaseRestException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
