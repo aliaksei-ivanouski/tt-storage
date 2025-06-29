@@ -32,6 +32,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -598,7 +599,9 @@ class FileControllerIntegrationTest {
         // Verify the file is deleted by trying to download it
         mockMvc.perform(get("/api/v1/files/{fileId}/users/{userId}",
                         uploadedFile.getId(), user1Id))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("error.file.not.found.or.access.denied"))
+                .andExpect(jsonPath("$.message").value("file not found or user has no access to the file"));
     }
 
     @Test
@@ -624,6 +627,62 @@ class FileControllerIntegrationTest {
     // ==================== NEGATIVE TESTS ====================
 
     @Test
+    void testUploadFileWithSameFilename() throws Exception {
+        String filename = "test-file.txt";
+        String content1 = "Test content for upload 1";
+        MockMultipartFile file1 = new MockMultipartFile(
+                "file", filename, "text/plain", content1.getBytes(StandardCharsets.UTF_8));
+
+        mockMvc.perform(multipart("/api/v1/files/upload")
+                        .file(file1)
+                        .param("userId", user1Id.toString())
+                        .param("visibility", "PRIVATE")
+                        .param("tags", String.join(",", Set.of("one"))))
+                .andExpect(status().isOk());
+
+        String content2 = "Test content for upload 2";
+        MockMultipartFile file2 = new MockMultipartFile(
+                "file", filename, "text/plain", content2.getBytes(StandardCharsets.UTF_8));
+        // Test upload with the same filename
+        mockMvc.perform(multipart("/api/v1/files/upload")
+                        .file(file2)
+                        .param("userId", user1Id.toString())
+                        .param("visibility", "PRIVATE")
+                        .param("tags", String.join(",", Set.of("two"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("error.same.file"))
+                .andExpect(jsonPath("$.message").value("The filename already exists"));
+    }
+
+    @Test
+    void testUploadFileWithSameContent() throws Exception {
+        String filename1 = "test-file_1.txt";
+        String content = "Test content for upload";
+        MockMultipartFile file1 = new MockMultipartFile(
+                "file", filename1, "text/plain", content.getBytes(StandardCharsets.UTF_8));
+
+        mockMvc.perform(multipart("/api/v1/files/upload")
+                        .file(file1)
+                        .param("userId", user1Id.toString())
+                        .param("visibility", "PRIVATE")
+                        .param("tags", String.join(",", Set.of("one"))))
+                .andExpect(status().isOk());
+
+        String filename2 = "test-file_2.txt";
+        MockMultipartFile file2 = new MockMultipartFile(
+                "file", filename2, "text/plain", content.getBytes(StandardCharsets.UTF_8));
+        // Test upload with the same filename
+        mockMvc.perform(multipart("/api/v1/files/upload")
+                        .file(file2)
+                        .param("userId", user1Id.toString())
+                        .param("visibility", "PRIVATE")
+                        .param("tags", String.join(",", Set.of("two"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("error.same.file"))
+                .andExpect(jsonPath("$.message").value("The file content already exists"));
+    }
+
+    @Test
     void testUploadFileWithInvalidData() throws Exception {
         // Test upload with missing file
         mockMvc.perform(multipart("/api/v1/files/upload")
@@ -631,7 +690,8 @@ class FileControllerIntegrationTest {
                         .param("visibility", "PRIVATE")
                         .param("tags", String.join(",", Set.of("test"))))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("error.file.absent"));
+                .andExpect(jsonPath("$.code").value("error.file.absent"))
+                .andExpect(jsonPath("$.message").value("Required part 'file' is not present."));
     }
 
     @Test
@@ -646,7 +706,9 @@ class FileControllerIntegrationTest {
                         .param("userId", "invalid-uuid")
                         .param("visibility", "PRIVATE")
                         .param("tags", "test"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("error.validation.failed"))
+                .andExpect(jsonPath("$.message").value("uploadFile.userId: must not be null or empty and must be a valid UUID"));
     }
 
     @Test
@@ -661,7 +723,9 @@ class FileControllerIntegrationTest {
                         .param("userId", user1Id.toString())
                         .param("visibility", "INVALID")
                         .param("tags", "test"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("error.validation.failed"))
+                .andExpect(jsonPath("$.message").value(containsString("uploadFile.visibility: must not be null or empty and must include valid values: PUBLIC, PRIVATE")));
     }
 
     @Test
@@ -676,21 +740,27 @@ class FileControllerIntegrationTest {
                         .param("userId", user1Id.toString())
                         .param("visibility", "PRIVATE")
                         .param("tags", "tag1,tag2,tag3,tag4,tag5,tag6"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("error.validation.failed"))
+                .andExpect(jsonPath("$.message").value("uploadFile.tags: maximum 5 tags allowed per file"));
     }
 
     @Test
     void testDownloadFileWithInvalidFileId() throws Exception {
         mockMvc.perform(get("/api/v1/files/{fileId}/users/{userId}",
                         "invalid-file-id", user1Id))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("error.validation.failed"))
+                .andExpect(jsonPath("$.message").value("getFile.fileId: must not be null or empty and must be a valid UUID"));
     }
 
     @Test
     void testDownloadFileWithInvalidUserId() throws Exception {
         mockMvc.perform(get("/api/v1/files/{fileId}/users/{userId}",
                         UUID.randomUUID(), "invalid-user-id"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("error.validation.failed"))
+                .andExpect(jsonPath("$.message").value("getFile.userId: must not be null or empty and must be a valid UUID"));
     }
 
     @Test
@@ -717,7 +787,8 @@ class FileControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/files/{fileId}/users/{userId}",
                         uploadedFile.getId(), user2Id))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("error.file.not.found.or.access.denied"));
+                .andExpect(jsonPath("$.code").value("error.file.not.found.or.access.denied"))
+                .andExpect(jsonPath("$.message").value("file not found or user has no access to the file"));
     }
 
     @Test
@@ -725,7 +796,8 @@ class FileControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/files/{fileId}/users/{userId}",
                         UUID.randomUUID(), user1Id))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("error.file.not.found.or.access.denied"));
+                .andExpect(jsonPath("$.code").value("error.file.not.found.or.access.denied"))
+                .andExpect(jsonPath("$.message").value("file not found or user has no access to the file"));
     }
 
     @Test
@@ -736,7 +808,9 @@ class FileControllerIntegrationTest {
         mockMvc.perform(put("/api/v1/files/{fileId}/rename", "invalid-file-id")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(renamePayload)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("error.validation.failed"))
+                .andExpect(jsonPath("$.message").value("renameFile.fileId: must not be null or empty and must be a valid UUID"));
     }
 
     @Test
@@ -766,7 +840,9 @@ class FileControllerIntegrationTest {
         mockMvc.perform(put("/api/v1/files/{fileId}/rename", uploadedFile.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(emptyNamePayload)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("error.internal.server"))
+                .andExpect(jsonPath("$.message").value("{\"newFilename\":\"file name must not be empty or exceed 50 symbols\"}"));
 
         // Test with too long filename
         String longName = "a".repeat(51);
@@ -776,7 +852,9 @@ class FileControllerIntegrationTest {
         mockMvc.perform(put("/api/v1/files/{fileId}/rename", uploadedFile.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(longNamePayload)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("error.internal.server"))
+                .andExpect(jsonPath("$.message").value("{\"newFilename\":\"file name must not be empty or exceed 50 symbols\"}"));
 
         // Test with invalid userId
         FileController.RenameFilePayload invalidUserPayload = new FileController.RenameFilePayload(
@@ -785,7 +863,9 @@ class FileControllerIntegrationTest {
         mockMvc.perform(put("/api/v1/files/{fileId}/rename", uploadedFile.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidUserPayload)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("error.internal.server"))
+                .andExpect(jsonPath("$.message").value("{\"userId\":\"must not be null or empty and must be a valid UUID\"}"));
     }
 
     @Test
@@ -816,21 +896,26 @@ class FileControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(renamePayload)))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("error.file.not.found.or.access.denied"));
+                .andExpect(jsonPath("$.code").value("error.file.not.found.or.access.denied"))
+                .andExpect(jsonPath("$.message").value("file not found or user has no access to the file"));
     }
 
     @Test
     void testDeleteFileWithInvalidFileId() throws Exception {
         mockMvc.perform(delete("/api/v1/files/{fileId}/users/{userId}",
                         "invalid-file-id", user1Id))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("error.validation.failed"))
+                .andExpect(jsonPath("$.message").value("deleteFile.fileId: must not be null or empty and must be a valid UUID"));
     }
 
     @Test
     void testDeleteFileWithInvalidUserId() throws Exception {
         mockMvc.perform(delete("/api/v1/files/{fileId}/users/{userId}",
                         UUID.randomUUID(), "invalid-user-id"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("error.validation.failed"))
+                .andExpect(jsonPath("$.message").value("deleteFile.userId: must not be null or empty and must be a valid UUID"));
     }
 
     @Test
@@ -838,7 +923,8 @@ class FileControllerIntegrationTest {
         mockMvc.perform(delete("/api/v1/files/{fileId}/users/{userId}",
                         UUID.randomUUID(), user1Id))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("error.file.not.found.or.access.denied"));
+                .andExpect(jsonPath("$.code").value("error.file.not.found.or.access.denied"))
+                .andExpect(jsonPath("$.message").value("file not found or user has no access to the file"));
     }
 
     @Test
@@ -846,7 +932,9 @@ class FileControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/files/users/{userId}", "invalid-user-id")
                         .param("page", "0")
                         .param("size", "10"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("error.validation.failed"))
+                .andExpect(jsonPath("$.message").value("listUserFiles.userId: must not be null or empty and must be a valid UUID"));
     }
 
     @Test
@@ -900,7 +988,9 @@ class FileControllerIntegrationTest {
                         .file(file)
                         .param("visibility", "PRIVATE")
                         .param("tags", "test"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("error.request.param.absent"))
+                .andExpect(jsonPath("$.message").value("Required request parameter 'userId' for method parameter type String is not present"));
     }
 
     @Test
@@ -914,7 +1004,9 @@ class FileControllerIntegrationTest {
                         .file(file)
                         .param("userId", user1Id.toString())
                         .param("tags", "test"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("error.request.param.absent"))
+                .andExpect(jsonPath("$.message").value("Required request parameter 'visibility' for method parameter type String is not present"));
     }
 
     @Test
@@ -941,7 +1033,9 @@ class FileControllerIntegrationTest {
         mockMvc.perform(put("/api/v1/files/{fileId}/rename", uploadedFile.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("null"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("error.invalid.json"))
+                .andExpect(jsonPath("$.message").value(containsString("Required request body is missing")));
     }
 
     @Test
@@ -968,6 +1062,8 @@ class FileControllerIntegrationTest {
         mockMvc.perform(put("/api/v1/files/{fileId}/rename", uploadedFile.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{ invalid json }"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("error.invalid.json"))
+                .andExpect(jsonPath("$.message").value("JSON parse error: Unexpected character ('i' (code 105)): was expecting double-quote to start field name"));
     }
 }

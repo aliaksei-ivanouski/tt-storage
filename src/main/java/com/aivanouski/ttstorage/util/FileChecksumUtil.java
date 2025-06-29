@@ -24,7 +24,6 @@ import java.nio.charset.StandardCharsets;
  * <ul>
  * <li>MD5 checksum calculation for file integrity verification</li>
  * <li>Stream-based processing for memory-efficient handling of large files</li>
- * <li>Filename inclusion in checksum for enhanced uniqueness</li>
  * <li>Automatic resource management with try-with-resources</li>
  * <li>Hexadecimal string output for easy storage and comparison</li>
  * </ul>
@@ -34,7 +33,7 @@ import java.nio.charset.StandardCharsets;
  * <strong>Checksum Strategy:</strong>
  * <ul>
  * <li><strong>Algorithm:</strong> MD5 (Message Digest Algorithm 5)</li>
- * <li><strong>Input:</strong> Filename + file content for enhanced
+ * <li><strong>Input:</strong> File content for enhanced
  * uniqueness</li>
  * <li><strong>Processing:</strong> Stream-based for memory efficiency</li>
  * <li><strong>Output:</strong> 32-character hexadecimal string</li>
@@ -44,8 +43,6 @@ import java.nio.charset.StandardCharsets;
  * <p>
  * <strong>Use Cases:</strong>
  * <ul>
- * <li><strong>Duplicate Detection:</strong> Identify identical files regardless
- * of filename</li>
  * <li><strong>Integrity Verification:</strong> Ensure files haven't been
  * corrupted</li>
  * <li><strong>Content-Based Identification:</strong> Use checksum as unique
@@ -60,7 +57,6 @@ import java.nio.charset.StandardCharsets;
  * <ul>
  * <li>MD5 is used for integrity, not cryptographic security</li>
  * <li>Suitable for collision-resistant duplicate detection</li>
- * <li>Filename inclusion reduces collision probability</li>
  * <li>Consider SHA-256 for higher security requirements</li>
  * </ul>
  * </p>
@@ -85,11 +81,11 @@ import java.nio.charset.StandardCharsets;
 public class FileChecksumUtil {
 
     /**
-     * Calculates an MD5 checksum for a file based on its filename and content.
+     * Calculates an MD5 checksum for a file based on its content.
      *
      * <p>
      * This method generates a cryptographic hash (MD5 checksum) that combines both
-     * the filename and file content. This approach provides enhanced uniqueness
+     * the file content. This approach provides enhanced uniqueness
      * compared to content-only checksums, making it more suitable for duplicate
      * detection in file storage systems.
      * </p>
@@ -99,27 +95,11 @@ public class FileChecksumUtil {
      * <ol>
      * <li><strong>Initialize MD5:</strong> Create MessageDigest instance with MD5
      * algorithm</li>
-     * <li><strong>Include Filename:</strong> Add filename bytes to the digest
-     * (UTF-8 encoding)</li>
      * <li><strong>Process Content:</strong> Stream file content through
      * DigestInputStream</li>
      * <li><strong>Generate Hash:</strong> Complete the digest and convert to
      * hexadecimal</li>
      * </ol>
-     * </p>
-     *
-     * <p>
-     * <strong>Filename Inclusion Benefits:</strong>
-     * <ul>
-     * <li><strong>Enhanced Uniqueness:</strong> Same content with different names
-     * gets different checksums</li>
-     * <li><strong>Collision Reduction:</strong> Reduces probability of checksum
-     * collisions</li>
-     * <li><strong>Context Preservation:</strong> Maintains filename context in the
-     * checksum</li>
-     * <li><strong>Better Duplicate Detection:</strong> Distinguishes between
-     * identical content with different names</li>
-     * </ul>
      * </p>
      *
      * <p>
@@ -147,7 +127,6 @@ public class FileChecksumUtil {
      * <ul>
      * <li>{@link NoSuchAlgorithmException}: If MD5 algorithm is not available</li>
      * <li>{@link IOException}: If file reading fails</li>
-     * <li>Null filename is handled gracefully (skipped)</li>
      * <li>Automatic stream cleanup on errors</li>
      * </ul>
      * </p>
@@ -165,11 +144,11 @@ public class FileChecksumUtil {
      * <p>
      * <strong>Examples:</strong>
      * <ul>
-     * <li>Input: filename="document.pdf", content=[PDF bytes] → Output:
+     * <li>Input: content=[PDF bytes] → Output:
      * "a1b2c3d4e5f6..."</li>
-     * <li>Input: filename="image.jpg", content=[JPEG bytes] → Output:
+     * <li>Input: content=[JPEG bytes] → Output:
      * "f6e5d4c3b2a1..."</li>
-     * <li>Input: filename=null, content=[any bytes] → Output:
+     * <li>Input: content=[any bytes] → Output:
      * "1234567890abcdef..."</li>
      * </ul>
      * </p>
@@ -184,16 +163,12 @@ public class FileChecksumUtil {
      * </ul>
      * </p>
      *
-     * @param fileName    the name of the file to include in the checksum
-     *                    calculation.
-     *                    Can be null, in which case only file content is used.
      * @param inputStream the input stream containing the file content. Must not be
      *                    null
      *                    and must be readable. The stream will be consumed during
      *                    processing.
      * @return a 32-character hexadecimal string representing the MD5 checksum of
-     * the
-     * filename and file content combined.
+     * the file content combined.
      * @throws NoSuchAlgorithmException if the MD5 algorithm is not available in the
      *                                  current Java environment (should not occur
      *                                  in
@@ -205,13 +180,9 @@ public class FileChecksumUtil {
      * @see DigestInputStream
      * @see StandardCharsets#UTF_8
      */
-    public static String calculateMD5Checksum(String fileName, InputStream inputStream)
+    public static String calculateMD5Checksum(InputStream inputStream)
             throws NoSuchAlgorithmException, IOException {
         MessageDigest md = MessageDigest.getInstance("MD5");
-        if (fileName != null) {
-            md.update(fileName.getBytes(StandardCharsets.UTF_8));
-        }
-
         try (DigestInputStream digestInputStream = new DigestInputStream(inputStream, md)) {
             byte[] buffer = new byte[8192];
             while (digestInputStream.read(buffer) != -1) {

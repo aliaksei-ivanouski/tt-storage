@@ -229,6 +229,49 @@ public interface FileRepository extends MongoRepository<File, String> {
     Optional<File> findByFilenameAndUserId(String filename, UUID userId);
 
     /**
+     * Retrieves a specific file by its MD5 and owner.
+     *
+     * <p>
+     * This method allows users to find their files by MD5. Since checksums
+     * are not globally unique (multiple users can have files with the same name),
+     * the user ID is required to ensure proper data isolation.
+     * </p>
+     *
+     * <p>
+     * <strong>Query:</strong> Automatically generated from method name:
+     * <code>findByMd5AndUserId</code> translates to MongoDB query:
+     * <code>{ "md5": ?0, "userId": ?1 }</code>
+     * </p>
+     *
+     * <p>
+     * <strong>MD5 Matching:</strong>
+     * <ul>
+     * <li>Exact string matching (case-sensitive)</li>
+     * <li>Includes file extension in matching</li>
+     * <li>Handles special characters in MD5</li>
+     * </ul>
+     * </p>
+     *
+     * <p>
+     * <strong>Use Cases:</strong>
+     * <ul>
+     * <li>Checking if a user already has a file with a specific name</li>
+     * <li>Finding a specific file by name within a user's collection</li>
+     * <li>Duplicate file detection during upload</li>
+     * </ul>
+     * </p>
+     *
+     * @param md5 the MD5 checksum of the file to search for. Must not be null or
+     *                 empty.
+     * @param userId   the unique identifier of the file owner. Must not be null.
+     * @return an {@link Optional} containing the file if found and owned by
+     * the specified user, or empty if not found or access denied.
+     * @throws IllegalArgumentException if MD5 is null/empty or userId is null
+     * @see Optional
+     */
+    Optional<File> findByMd5AndUserId(String md5, UUID userId);
+
+    /**
      * Retrieves a paginated list of all public files in the system.
      *
      * <p>

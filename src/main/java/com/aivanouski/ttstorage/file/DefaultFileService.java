@@ -65,7 +65,12 @@ public class DefaultFileService implements FileService {
         String filename = multipartFile.getOriginalFilename();
         long size = multipartFile.getSize();
 
-        Optional<File> existentFile = fileRepository.findByFilenameAndUserId(filename, userId);
+        fileRepository.findByFilenameAndUserId(filename, userId)
+                .ifPresent(file -> {
+                    if (file.getFilename().equals(filename)) {
+                        throw new BadRequestException(SAME_FILE_ERROR, "The filename already exists");
+                    }
+                });
 
         log.info("Starting streaming upload for large file: {} ({} bytes)", filename, size);
 
@@ -83,11 +88,14 @@ public class DefaultFileService implements FileService {
 
                 String md5;
                 try (InputStream fileInputStream = Files.newInputStream(tempFile)) {
-                    md5 = FileChecksumUtil.calculateMD5Checksum(filename, fileInputStream);
+                    md5 = FileChecksumUtil.calculateMD5Checksum(fileInputStream);
                 }
-                if (existentFile.isPresent() && existentFile.get().getMd5().equals(md5)) {
-                    throw new BadRequestException(SAME_FILE_ERROR, "The file already exists");
-                }
+                fileRepository.findByMd5AndUserId(md5, userId)
+                        .ifPresent(file -> {
+                            if (file.getMd5().equals(md5)) {
+                                throw new BadRequestException(SAME_FILE_ERROR, "The file content already exists");
+                            }
+                        });
 
                 if (contentType == null || contentType.isEmpty()) {
                     contentType = new Tika().detect(tempFile.toFile());
