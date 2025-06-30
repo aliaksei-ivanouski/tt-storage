@@ -2,11 +2,19 @@ server:
   port: ${TT_STORAGE_SERVICE_PORT:8080}
   jetty:
     threads:
-      max: 200
-      min: 10
-    connection-idle-timeout: 3600000
-    max-connections: 8192
-    accept-queue-size: 100
+      max: 100
+      min: 5
+    connection-idle-timeout: 7200000
+    max-connections: 4096
+    accept-queue-size: 50
+    http2:
+      enabled: false
+    http:
+      output-buffer-size: 16384
+      request-header-size: 8192
+      response-header-size: 8192
+      send-server-version: false
+      send-date-header: false
 
 spring:
   application:
@@ -15,9 +23,10 @@ spring:
     multipart:
       max-file-size: -1
       max-request-size: -1
-      file-size-threshold: 10MB
+      file-size-threshold: 5MB
       location: ${SPRING_SERVLET_MULTIPART_LOCATION:${java.io.tmpdir}}
       resolve-lazily: true
+      enabled: true
 
   data:
     mongodb:
